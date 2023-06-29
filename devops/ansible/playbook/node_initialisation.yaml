@@ -1,0 +1,36 @@
+---
+- hosts: local
+  tasks:
+    - name: edit config to add new ssh key
+      become: yes
+      blockinfile:
+        path: ${path_to_ssh_config}
+        # backup: yes
+        block: |
+          Host ${master_node_public_ip}
+            AddKeysToAgent yes
+            UseKeyChain yes
+            IdentityFile ${path_to_ssh_private_key}
+
+- hosts: master
+  become: yes
+  tasks:
+    - name: chenge sudoers file
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: "^%sudo"
+        line: "%sudo ALL=(ALL) NOPASSWD: ALL"
+        validate: /usr/sbin/visudo -cf %s
+    - name: update & upgrade apt
+      apt:
+        name: "*"
+        state: "latest"
+        update_cache: yes
+        autoremove: yes
+        autoclean: yes
+        clean: yes
+        cache_valid_time: 3600
+    - name: reboot system
+      reboot:
+        reboot_timeout: 3600

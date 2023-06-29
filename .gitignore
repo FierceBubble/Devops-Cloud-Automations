@@ -32,3 +32,13 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ignore HCL
+*.hcl
+
+# Ignore Backend and kubeconfig.yaml (** IMPORTANT ***)
+backend
+.kube
+
+# Ignore VScode workspace configuration
+.vscode
