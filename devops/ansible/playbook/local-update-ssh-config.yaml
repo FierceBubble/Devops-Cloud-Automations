@@ -1,0 +1,17 @@
+---
+- hosts: local
+  vars_files:
+    - ../vars/main.yml 
+  tasks:
+    - name: edit config to add new ssh key
+      become: yes
+      blockinfile:
+        path: "/Users/{{ local_username }}/.ssh/config"
+        # backup: yes
+        block: |
+
+          Host {{ master_node_public_ip }}
+            AddKeysToAgent yes
+            UseKeyChain yes
+            IdentityFile {{ master_node_ssh_private_key }}
+            

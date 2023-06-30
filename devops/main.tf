@@ -14,10 +14,16 @@ terraform {
       source  = "linode/linode"
       version = ">= 1.95.1"
     }
+    ansible = {
+      source  = "ansible/ansible"
+      version = ">= 1.1.0"
+    }
   }
 
-  # Put .tfstate into a s3 cloud storage instead of a local
-  backend "s3" {}
+  # Put .tfstate into Linode s3 cloud storage instead of a local
+  # backend "s3" {}
+  # Used for S3 cloud object storage
+  # terraform -chdir=./devops init --backend-config=backend 
 }
 
 provider "azurerm" {

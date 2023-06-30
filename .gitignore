@@ -42,3 +42,9 @@ backend
 
 # Ignore VScode workspace configuration
 .vscode
+
+# Ignore Ansible files
+*/inventory
+password
+vault.yml
+**/vars

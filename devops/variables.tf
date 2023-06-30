@@ -1,13 +1,13 @@
 # - - - - - Linode Variables - - - - - #
 variable "linode_token" {
   description = "Linode API Token"
-  sensitive = true
+  sensitive   = true
 }
 
 # - - - - - Cloudflare Variables - - - - - #
 variable "cloudflare_api_key" {
   description = "Cloudflare API Key"
-  sensitive = true
+  sensitive   = true
 }
 
 variable "cloudflare_email" {
@@ -17,12 +17,12 @@ variable "cloudflare_email" {
 # - - - - - Azure Variables - - - - - #
 variable "azure_subscription_id" {
   description = " Azure Subscription ID"
-  sensitive = true
+  sensitive   = true
 }
 
 variable "azure_tenant_id" {
   description = " Azure Tenant ID"
-  sensitive = true
+  sensitive   = true
 }
 
 # - - - - - Azure Resource Group Variables - - - - - #
@@ -126,4 +126,18 @@ variable "worker_vm_count" {
     condition     = var.worker_vm_count >= 1
     error_message = "Worker nodes should be 1 or more!"
   }
+}
+
+# - - - - - Local Variables - - - - -
+variable "local_admin_username" {
+  type        = string
+  nullable    = false
+  description = "Admin userame to Local"
+}
+
+variable "local_admin_pass" {
+  type        = string
+  nullable    = false
+  description = "Admin password to Local"
+  sensitive   = true
 }

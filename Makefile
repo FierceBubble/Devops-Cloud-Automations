@@ -1,6 +1,6 @@
 # - - - - - Terraform Commands - - - - -
 init:
-	terraform -chdir=./devops init --backend-config=backend
+	terraform -chdir=./devops init 
 plan:
 	terraform -chdir=./devops plan
 apply:
@@ -9,19 +9,31 @@ destroy:
 	terraform -chdir=./devops destroy -auto-approve
 console:
 	terraform -chdir=./devops console
+migrate:
+	terraform -chdir=./devops init -migrate-state
+
 # - - - - - Ansible Commands - - - - -
 # Ping
 ping:
-	ansible all -m ping
+	cd ./devops && ansible all -m ping
 ping-master:
-	ansible master -m ping
+	cd ./devops && ansible master -m ping
 ping-nodes:
-	ansible master -m ping
+	cd ./devops && ansible master -m ping
 
 # Check Version
 version:
-	ansible all -m shell -a "lsb_release -a"
+	cd ./devops && ansible all -m shell -a "lsb_release -a"
 version-master:
-	ansible master -m shell -a "lsb_release -a"
+	cd ./devops && ansible master -m shell -a "lsb_release -a"
 version-nodes:
-	ansible nodes -m shell -a "lsb_release -a"
+	cd ./devops && ansible nodes -m shell -a "lsb_release -a"
+
+inventory:
+	cd ./devops && ansible-inventory --graph --vars 
+
+# Playbook
+local-update-ssh-config:
+	cd ./devops && ansible-playbook ./ansible/playbook/local-update-ssh-config.yaml
+update-apt:
+	cd ./devops && ansible-playbook ./ansible/playbook/update-apt.yaml
