@@ -1,11 +1,12 @@
 ---
-- hosts: local
+- name: Update SSH config file
+  hosts: local
   vars_files:
-    - ../vars/main.yml 
+    - ../vars/main.yml
   tasks:
-    - name: edit config to add new ssh key
-      become: yes
-      blockinfile:
+    - name: Edit config to add new ssh key
+      become: true
+      ansible.builtin.blockinfile:
         path: "/Users/{{ local_username }}/.ssh/config"
         # backup: yes
         block: |
@@ -14,4 +15,3 @@
             AddKeysToAgent yes
             UseKeyChain yes
             IdentityFile {{ master_node_ssh_private_key }}
-            

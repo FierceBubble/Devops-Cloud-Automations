@@ -1,23 +1,24 @@
 ---
-- hosts: master
-  become: yes
+- name: Setting up master node
+  hosts: master
+  become: true
   tasks:
-    - name: change sudoers file
-      lineinfile:
+    - name: Change sudoers file
+      ansible.builtin.lineinfile:
         path: /etc/sudoers
         state: present
         regexp: "^%sudo"
         line: "%sudo ALL=(ALL) NOPASSWD: ALL"
         validate: /usr/sbin/visudo -cf %s
-    - name: update & upgrade apt
-      apt:
+    - name: Update & upgrade apt
+      ansible.builtin.apt:
         name: "*"
-        state: "latest"
-        update_cache: yes
-        autoremove: yes
-        autoclean: yes
-        clean: yes
+        state: present
+        update_cache: true
+        autoremove: true
+        autoclean: true
+        clean: true
         cache_valid_time: 3600
-    - name: reboot system
-      reboot:
+    - name: Reboot system
+      ansible.builtin.reboot:
         reboot_timeout: 3600

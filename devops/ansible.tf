@@ -22,3 +22,15 @@ resource "ansible_host" "master" {
     # yaml_secret                  = local.decoded_vault_yml.sensitive
   }
 }
+
+# resource "ansible_playbook" "local-update-ssh-config" {
+#   playbook   = "./ansible/playbook/local-update-ssh-config.yaml"
+#   name       = "local"
+#   replayable = true
+
+#   extra_vars = {
+#     local_username              = var.local_admin_username
+#     master_node_public_ip       = azurerm_linux_virtual_machine.vm.public_ip_address
+#     master_node_ssh_private_key = local.private_key
+#   }
+# }

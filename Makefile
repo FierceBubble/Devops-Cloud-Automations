@@ -1,16 +1,24 @@
 # - - - - - Terraform Commands - - - - -
 init:
 	terraform -chdir=./devops init 
+validate:
+	terraform -chdir=./devops validate
 plan:
 	terraform -chdir=./devops plan
+plan-no-refresh:
+	terraform -chdir=./devops plan -refresh=false
 apply:
 	terraform -chdir=./devops apply
+apply-no-refresh:
+	terraform -chdir=./devops apply -refresh=false
 destroy:
 	terraform -chdir=./devops destroy -auto-approve
 console:
 	terraform -chdir=./devops console
 migrate:
 	terraform -chdir=./devops init -migrate-state
+upgrade:
+	terraform -chdir=./devops init -upgrade
 
 # - - - - - Ansible Commands - - - - -
 # Ping
