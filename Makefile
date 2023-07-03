@@ -19,6 +19,8 @@ migrate:
 	terraform -chdir=./devops init -migrate-state
 upgrade:
 	terraform -chdir=./devops init -upgrade
+reapply:
+	make destroy && make apply-no-refresh
 
 # - - - - - Ansible Commands - - - - -
 # Ping
@@ -43,5 +45,7 @@ inventory:
 # Playbook
 local-update-ssh-config:
 	cd ./devops && ansible-playbook ./ansible/playbook/local-update-ssh-config.yaml
-update-apt:
-	cd ./devops && ansible-playbook ./ansible/playbook/update-apt.yaml
+remote-update-apt:
+	cd ./devops && ansible-playbook ./ansible/playbook/remote-update-apt.yaml
+master-update-ssh-config:
+	cd ./devops && ansible-playbook ./ansible/playbook/master-update-ssh-config.yaml

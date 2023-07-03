@@ -1,0 +1,10 @@
+---
+- name: Setting up worker node
+  hosts: master
+  become: true
+  tasks:
+    - name: Connect to worker
+      ansible.builtin.ssh:
+        host: "10.230.0.20"
+        host_key_checking: false
+        password: ""

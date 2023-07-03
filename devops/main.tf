@@ -18,6 +18,10 @@ terraform {
       source  = "ansible/ansible"
       version = ">= 1.1.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = ">= 3.0.0"
+    }
   }
 
   # Put .tfstate into Linode s3 cloud storage instead of a local
@@ -40,3 +44,5 @@ provider "cloudflare" {
 provider "linode" {
   token = var.linode_token
 }
+
+provider "tls" {}

@@ -111,10 +111,22 @@ variable "azure_vm_image_version" {
   default     = "latest"
 }
 
+# Ubuntu 22.04 LTS Image
+# Cannonical
+# 0001-com-ubuntu-server-jammy
+# 22_04-lts-gen2
+# latest
+
 # Ubuntu 20.04 LTS Image
 # Canonical
 # 0001-com-ubuntu-server-focal
 # 20_04-lts
+# latest
+
+# Ubuntu 18.04 LTS Image
+# Cannonical
+# UbuntuServer
+# 18.04-LTS 
 # latest
 
 # - - - - - Dynamic Variables - - - - - #

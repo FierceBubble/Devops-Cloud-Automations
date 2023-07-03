@@ -7,5 +7,5 @@ output "worker-nic-ids" {
 }
 
 output "worker-private-ip" {
-  value = azurerm_network_interface.worker_nic[*].private_ip_addresses
+  value = azurerm_network_interface.worker_nic[*].private_ip_address
 }

@@ -48,3 +48,4 @@ backend
 password
 vault.yml
 **/vars
+**/ssh
