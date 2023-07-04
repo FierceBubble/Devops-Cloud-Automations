@@ -45,9 +45,31 @@
         - gnupg
         - runc
 
-    - name: Downloading Containerd binary
+    - name: Downloading Containerd binary - master
+      when: inventory_hostname in groups["master"]
       ansible.builtin.get_url:
         url: https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
+        dest: /home/{{ remote_username }}/
+        mode: "0664"
+
+    - name: Downloading Containerd binary - worker
+      when: inventory_hostname in groups["worker"]
+      ansible.builtin.get_url:
+        url: https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
+        dest: /home/{{ remote_username }}/
+        mode: "0664"
+
+    - name: Downloading CNI Plugin binary - master
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.get_url:
+        url: https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
+        dest: /home/{{ remote_username }}/
+        mode: "0664"
+
+    - name: Downloading CNI Plugin binary - worker
+      when: inventory_hostname in groups["worker"]
+      ansible.builtin.get_url:
+        url: https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
         dest: /home/{{ remote_username }}/
         mode: "0664"
 
@@ -68,12 +90,6 @@
         name: containerd
         daemon_reload: true
         state: started
-
-    - name: Downloading CNI Plugin binary
-      ansible.builtin.get_url:
-        url: https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
-        dest: /home/{{ remote_username }}/
-        mode: "0664"
 
     - name: Create CNI Plugin Directory
       ansible.builtin.file:
@@ -151,11 +167,10 @@
       when: inventory_hostname in groups["master"]
       ansible.builtin.command: sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.230.0.10
       register: kubernetes_init
-      changed_when: kubernetes_init.rc is != 0
+      changed_when: false
       failed_when:
         - "'cni plugin not initialized' in kubernetes_init.stderr"
       timeout: 10000
-      # ignore_errors: true
 
     - name: Error Message - Kubeadm init
       when: inventory_hostname in groups["master"]
@@ -165,14 +180,14 @@
     - name: Command to join nodes through Kubeadm join
       when: inventory_hostname in groups["master"]
       ansible.builtin.debug:
-        var: kubernetes_init.stdout_lines
+        var: kubernetes_init.stdout
 
     - name: Create .kube
       when: inventory_hostname in groups["master"]
       ansible.builtin.file:
         path: /home/{{ remote_username }}/.kube
         state: directory
-        mode: "0777"
+        mode: "0755"
 
     - name: Copy kubeconfig
       when: inventory_hostname in groups["master"]
@@ -180,13 +195,14 @@
         remote_src: true
         src: /etc/kubernetes/admin.conf
         dest: /home/{{ remote_username }}/.kube/config
-        mode: "0777"
+        mode: "0755"
 
     - name: Copying kubeconfig to local
       when: inventory_hostname in groups["master"]
       ansible.builtin.fetch:
         src: "/home/{{ remote_username }}/.kube/config"
         dest: "{{ local_dir }}/.kube/kubeconfig.yaml"
+        flat: true
     # - name: Set up Kubernetes for shashank user
     #   command: "{{ item }}"
     #   when: inventory_hostname in groups['k8s-master']
