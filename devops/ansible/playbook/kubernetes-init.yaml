@@ -1,0 +1,219 @@
+---
+- name: Setting up Kubernetes on both Master and Worker nodes
+  hosts: master:worker
+  vars_files:
+    - ../vars/main.yml
+  become: true
+  tasks:
+    # - name: Adding GPG Key for Docker
+    #   ansible.builtin.apt_key:
+    #     url: https://download.docker.com/linux/ubuntu/gpg
+    #     state: present
+
+    # - name: Adding Rpository for Docker
+    #   ansible.builtin.apt_repository:
+    #     repo: deb https://download.docker.com/linux/ubuntu jammy stable
+    #     state: present
+
+    # - name: Installing Docker Dependencies
+    #   ansible.builtin.apt:
+    #     name: "{{ item }}"
+    #     state: present
+    #     update_cache: true
+    #   loop:
+    #     - docker-ce
+    #     - docker-ce-cli
+    #     - docker-buildx-plugin
+    #     - docker-compose-plugin
+    #     - containerd.io
+    #     - runc
+
+    # - name: Start & Enable Docker service
+    #   ansible.builtin.service:
+    #     name: docker
+    #     state: started
+    #     enabled: true
+    - name: Installing Dependencies
+      ansible.builtin.apt:
+        update_cache: true
+        name: "{{ item }}"
+        state: present
+      loop:
+        - curl
+        - wget
+        - ca-certificates
+        - gnupg
+        - runc
+
+    - name: Downloading Containerd binary
+      ansible.builtin.get_url:
+        url: https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
+        dest: /home/{{ remote_username }}/
+        mode: "0664"
+
+    - name: Unpacking Containerd binary
+      ansible.builtin.unarchive:
+        src: /home/{{ remote_username }}/containerd-1.6.8-linux-amd64.tar.gz
+        dest: /usr/local
+        remote_src: true
+
+    - name: Downloading Containerd.service
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+        dest: /lib/systemd/system/containerd.service
+        mode: "0664"
+
+    - name: Start & Enable Containerd
+      ansible.builtin.service:
+        name: containerd
+        daemon_reload: true
+        state: started
+
+    - name: Downloading CNI Plugin binary
+      ansible.builtin.get_url:
+        url: https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
+        dest: /home/{{ remote_username }}/
+        mode: "0664"
+
+    - name: Create CNI Plugin Directory
+      ansible.builtin.file:
+        path: /opt/cni/bin
+        state: directory
+        mode: "0644"
+
+    - name: Unpacking CNI Plugin binary
+      ansible.builtin.unarchive:
+        src: /home/{{ remote_username }}/cni-plugins-linux-amd64-v1.3.0.tgz
+        dest: /opt/cni/bin
+        remote_src: true
+
+    - name: Remove swapfile from /etc/fstab
+      ansible.posix.mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+
+    - name: Disable swap
+      ansible.builtin.command: swapoff -a
+      changed_when: ansible_swaptotal_mb >= 0
+
+    - name: Flush IPtables
+      ansible.builtin.iptables:
+        flush: true
+
+    - name: Enable IP-Forward
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        sysctl_set: true
+        state: present
+        reload: true
+
+    - name: Adding overlay module
+      community.general.modprobe:
+        name: overlay
+
+    - name: Adding br_netfilter module
+      community.general.modprobe:
+        name: br_netfilter
+
+    - name: Adding GPG Key for Kubernetes
+      ansible.builtin.apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Adding Repository for Kubernetes
+      ansible.builtin.apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+
+    - name: Install Kubernetes
+      ansible.builtin.apt:
+        force_apt_get: true
+        update_cache: true
+        name: "{{ item }}"
+        state: present
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Restart kubelet
+      ansible.builtin.service:
+        name: kubelet
+        daemon_reload: true
+        state: restarted
+
+    - name: Initialize the Kubernetes cluster using kubeadm command
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.command: sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.230.0.10
+      register: kubernetes_init
+      changed_when: kubernetes_init.rc is != 0
+      failed_when:
+        - "'cni plugin not initialized' in kubernetes_init.stderr"
+      timeout: 10000
+      # ignore_errors: true
+
+    - name: Error Message - Kubeadm init
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.debug:
+        var: kubernetes_init.stderr
+
+    - name: Command to join nodes through Kubeadm join
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.debug:
+        var: kubernetes_init.stdout_lines
+
+    - name: Create .kube
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.file:
+        path: /home/{{ remote_username }}/.kube
+        state: directory
+        mode: "0777"
+
+    - name: Copy kubeconfig
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.copy:
+        remote_src: true
+        src: /etc/kubernetes/admin.conf
+        dest: /home/{{ remote_username }}/.kube/config
+        mode: "0777"
+
+    - name: Copying kubeconfig to local
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.fetch:
+        src: "/home/{{ remote_username }}/.kube/config"
+        dest: "{{ local_dir }}/.kube/kubeconfig.yaml"
+    # - name: Set up Kubernetes for shashank user
+    #   command: "{{ item }}"
+    #   when: inventory_hostname in groups['k8s-master']
+    #   with_items:
+    #     - mkdir -p /home/shashank/.kube
+    #     - cp -i /etc/kubernetes/admin.conf /home/shashank/.kube/config
+    #     - chown shashank:shashank /home/shashank/.kube/config
+
+    # - name: Install Flannel pod network
+    #   become: false
+    #   when: inventory_hostname in groups['k8s-master']
+    #   command: kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+
+    # - name: Retrieve Kubernetes join command that is used to join worker node(s)
+    #   become: false
+    #   when: inventory_hostname in groups['k8s-master']
+    #   command: kubeadm token create --print-join-command
+    #   register: join_command
+
+    # - name: Attach kubeadm join command to a file on Ansible control node
+    #   when: inventory_hostname in groups['k8s-master']
+    #   local_action: "copy content='{{ join_command.stdout_lines[0] }}' dest=join-command"
+
+    # - name: Copy the join-command file created above to worker node
+    #   when: inventory_hostname in groups['k8s-worker']
+    #   copy: src=join-command dest=/tmp/kubeadm-join.sh mode=0777
+
+    # - name: Join the worker node to cluster
+    #   when: inventory_hostname in groups['k8s-worker']
+    #   command: sh /tmp/kubeadm-join.sh

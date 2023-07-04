@@ -66,10 +66,10 @@ resource "time_sleep" "local-exec-provisioner" {
       make local-update-ssh-config
       make ping-master
       make master-update-ssh-config
-      make master-update-apt
-      make ping-worker
-      make worker-update-apt
+      make all-update-apt
       make ping
+      make kubernetes-init
+      make local-add-kubeconfig
     EOT
   }
   create_duration = "5s"

@@ -12,12 +12,14 @@
         # owner: "{{ remote_username }}"
         # group: "{{ remote_username }}"
         mode: "0744"
+
     - name: Create SSH config file
       become: true
       ansible.builtin.file:
         state: touch
         path: "/home/{{ remote_username }}/.ssh/config"
         mode: "0644"
+
     - name: Edit config to add new SSH key
       become: true
       ansible.builtin.blockinfile:

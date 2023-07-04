@@ -25,7 +25,11 @@ reapply:
 	$(MAKE) destroy && $(MAKE) apply-auto-approve
 
 # - - - - - Ansible Commands - - - - -
-# Ping
+## Inventory
+inventory:
+	cd ./devops && ansible-inventory --graph --vars 
+
+## Ping
 ping:
 	cd ./devops && ansible all -m ping
 ping-master:
@@ -33,7 +37,7 @@ ping-master:
 ping-worker:
 	cd ./devops && ansible worker -m ping
 
-# Check Version
+##Check Version
 version:
 	cd ./devops && ansible all -m shell -a "lsb_release -a"
 version-master:
@@ -41,12 +45,12 @@ version-master:
 version-nodes:
 	cd ./devops && ansible nodes -m shell -a "lsb_release -a"
 
-inventory:
-	cd ./devops && ansible-inventory --graph --vars 
-
-# Playbook
+## Playbook
 local-update-ssh-config:
 	cd ./devops && ansible-playbook ./ansible/playbook/local-update-ssh-config.yaml
+local-add-kubeconfig:
+	cd ./devops && ansible-playbook ./ansible/playbook/local-add-kubeconfig.yaml
+
 master-update-apt:
 	cd ./devops && ansible-playbook ./ansible/playbook/master-update-apt.yaml
 master-update-ssh-config:
@@ -54,3 +58,9 @@ master-update-ssh-config:
 
 worker-update-apt:
 	cd ./devops && ansible-playbook ./ansible/playbook/worker-update-apt.yaml
+
+all-update-apt:
+	cd ./devops && ansible-playbook ./ansible/playbook/all-update-apt.yaml
+
+kubernetes-init:
+	cd ./devops && ansible-playbook ./ansible/playbook/kubernetes-init.yaml

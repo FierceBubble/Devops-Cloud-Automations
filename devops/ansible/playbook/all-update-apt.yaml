@@ -1,6 +1,6 @@
 ---
-- name: Setting up worker node
-  hosts: worker
+- name: Setting up ALL node
+  hosts: master:worker
   become: true
   tasks:
     - name: Change sudoers file
@@ -10,6 +10,7 @@
         regexp: "^%sudo"
         line: "%sudo ALL=(ALL) NOPASSWD: ALL"
         validate: /usr/sbin/visudo -cf %s
+
     - name: Update & upgrade apt
       ansible.builtin.apt:
         name: "*"
@@ -19,6 +20,13 @@
         autoclean: true
         clean: true
         cache_valid_time: 3600
-    - name: Reboot system
+
+    - name: Reboot worker
+      when: inventory_hostname in groups["worker"]
+      ansible.builtin.reboot:
+        reboot_timeout: 3600
+
+    - name: Reboot master
+      when: inventory_hostname in groups["master"]
       ansible.builtin.reboot:
         reboot_timeout: 3600
