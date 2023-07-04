@@ -21,6 +21,28 @@ resource "ansible_host" "master" {
   }
 }
 
+resource "ansible_group" "worker_group" {
+  depends_on = [local_file.ansible_vars_tf]
+  name       = "worker"
+  # children = module.network.worker-private-ip
+  variables = {
+    ansible_ssh_common_args = "-o ProxyCommand=\"ssh -W %h:%p -q ${var.azure_admin_username}@${azurerm_linux_virtual_machine.vm.public_ip_address}\""
+  }
+}
+
+resource "ansible_host" "worker" {
+  depends_on = [ansible_group.worker_group]
+  count      = var.worker_vm_count
+  name       = module.network.worker-private-ip[count.index]
+  groups     = [ansible_group.worker_group.name]
+  # groups = ["worker"]
+
+  variables = {
+    ansible_user                 = var.azure_admin_username
+    ansible_ssh_private_key_file = "${local.root_dir}/devops/ssh/ssh-key"
+  }
+}
+
 # resource "ansible_playbook" "local-update-ssh-config" {
 #   playbook   = "./ansible/playbook/local-update-ssh-config.yaml"
 #   name       = "local"
@@ -34,11 +56,21 @@ resource "ansible_host" "master" {
 # }
 
 resource "time_sleep" "local-exec-provisioner" {
-  depends_on = [ansible_host.master]
+  depends_on = [ansible_host.worker]
   provisioner "local-exec" {
     when        = create
     working_dir = local.root_dir
-    command     = "make inventory && make ping && make local-update-ssh-config && make remote-update-apt && make master-update-ssh-config"
+    # command     = "make inventory && make ping-master && make local-update-ssh-config && make remote-update-apt && make master-update-ssh-config && make ping && make worker-setup"
+    command = <<EOT
+      make inventory
+      make local-update-ssh-config
+      make ping-master
+      make master-update-ssh-config
+      make master-update-apt
+      make ping-worker
+      make worker-update-apt
+      make ping
+    EOT
   }
   create_duration = "5s"
 }

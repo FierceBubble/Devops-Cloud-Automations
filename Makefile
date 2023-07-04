@@ -11,6 +11,8 @@ apply:
 	terraform -chdir=./devops apply
 apply-no-refresh:
 	terraform -chdir=./devops apply -refresh=false
+apply-auto-approve:
+	terraform -chdir=./devops apply -refresh=false -auto-approve
 destroy:
 	terraform -chdir=./devops destroy -auto-approve
 console:
@@ -20,7 +22,7 @@ migrate:
 upgrade:
 	terraform -chdir=./devops init -upgrade
 reapply:
-	make destroy && make apply-no-refresh
+	$(MAKE) destroy && $(MAKE) apply-auto-approve
 
 # - - - - - Ansible Commands - - - - -
 # Ping
@@ -28,8 +30,8 @@ ping:
 	cd ./devops && ansible all -m ping
 ping-master:
 	cd ./devops && ansible master -m ping
-ping-nodes:
-	cd ./devops && ansible master -m ping
+ping-worker:
+	cd ./devops && ansible worker -m ping
 
 # Check Version
 version:
@@ -45,7 +47,10 @@ inventory:
 # Playbook
 local-update-ssh-config:
 	cd ./devops && ansible-playbook ./ansible/playbook/local-update-ssh-config.yaml
-remote-update-apt:
-	cd ./devops && ansible-playbook ./ansible/playbook/remote-update-apt.yaml
+master-update-apt:
+	cd ./devops && ansible-playbook ./ansible/playbook/master-update-apt.yaml
 master-update-ssh-config:
 	cd ./devops && ansible-playbook ./ansible/playbook/master-update-ssh-config.yaml
+
+worker-update-apt:
+	cd ./devops && ansible-playbook ./ansible/playbook/worker-update-apt.yaml
