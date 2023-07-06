@@ -64,3 +64,7 @@ all-update-apt:
 
 kubernetes-init:
 	cd ./devops && ansible-playbook ./ansible/playbook/kubernetes-init.yaml
+
+## Testing
+test-kubeadm-token-create:
+	cd ./devops && ansible-playbook ./ansible/playbook/test/test-kubeadm-token-create.yaml

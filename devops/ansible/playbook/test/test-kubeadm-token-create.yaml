@@ -1,0 +1,27 @@
+---
+- name: Testing kubeadm Token creation
+  hosts: master:worker
+  vars_files:
+    - ../../vars/main.yml
+  tasks:
+    - name: Create Kubeadm token for worker node
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.command: 'kubeadm token create --description "[{{ item }}] worker-{{ index }}"  --print-join-command'
+      register: kubeadm_token
+      # with_items: "{{ worker_node_private_ips }}"
+      loop:
+        - "10.230.0.20"
+        - "10.230.0.21"
+        - "10.230.0.22"
+        - "10.230.0.23"
+      loop_control:
+        index_var: index
+      changed_when: false
+
+    - name: Debug Kubeadm Token output
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.debug:
+        var: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
+      loop: "{{ worker_node_private_ips }}"
+      loop_control:
+        index_var: index
