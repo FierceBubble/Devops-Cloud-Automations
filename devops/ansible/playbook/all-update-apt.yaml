@@ -11,6 +11,20 @@
         line: "%sudo ALL=(ALL) NOPASSWD: ALL"
         validate: /usr/sbin/visudo -cf %s
 
+    - name: Remove packages
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - docker
+        - docker.io
+        - containerd
+        - runc
+        - kubelet
+        - kubeadm
+        - kubectl
+        - kubernetes-cni
+
     - name: Update & upgrade apt
       ansible.builtin.apt:
         name: "*"
@@ -20,6 +34,31 @@
         autoclean: true
         clean: true
         cache_valid_time: 3600
+
+    - name: Adding overlay and br_netfilter
+      ansible.builtin.command: "sudo modprobe overlay && sudo modprobe br_netfilter"
+      changed_when: false
+
+    - name: Adding overlay and br_netfilter conf
+      ansible.builtin.copy:
+        mode: "0644"
+        dest: /etc/modules-load.d/kubernetes.conf
+        content: |
+          overlay
+          br_netfilter
+
+    - name: Adding IP tables
+      ansible.builtin.copy:
+        mode: "0644"
+        dest: /etc/sysctl.d/kubernetes.conf
+        content: |
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables  = 1
+          net.ipv4.ip_forward                 = 1
+
+    - name: Reload Sysctl
+      ansible.builtin.command: "sudo sysctl --system"
+      changed_when: false
 
     - name: Reboot worker
       when: inventory_hostname in groups["worker"]

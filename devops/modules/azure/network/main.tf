@@ -31,9 +31,10 @@ resource "azurerm_public_ip" "public_ip" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  name                = "master-nic"
-  location            = var.rg_location
-  resource_group_name = var.rg_name
+  name                 = "master-nic"
+  location             = var.rg_location
+  resource_group_name  = var.rg_name
+  enable_ip_forwarding = true
 
   ip_configuration {
     name                          = var.azure_nic_ipconfig_name
@@ -46,10 +47,11 @@ resource "azurerm_network_interface" "nic" {
 }
 
 resource "azurerm_network_interface" "worker_nic" {
-  count               = var.count_worker_node
-  name                = "worker-${count.index}-nic"
-  location            = var.rg_location
-  resource_group_name = var.rg_name
+  count                = var.count_worker_node
+  name                 = "worker-${count.index}-nic"
+  location             = var.rg_location
+  resource_group_name  = var.rg_name
+  enable_ip_forwarding = true
 
   ip_configuration {
     name                          = var.azure_nic_ipconfig_name

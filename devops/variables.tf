@@ -33,7 +33,13 @@ variable "azure_rg_name" {
 
 variable "azure_rg_location" {
   description = "Azure RG location (Region)"
-  default     = "Japan East"
+  default     = "East Asia"
+}
+
+# - - - - - Azure Availability Set Variables - - - - - #
+variable "azure_availability_set_name" {
+  description = "Azure AS name"
+  default     = "TF-avlbset"
 }
 
 # - - - - - Azure VM Variables - - - - - #
@@ -98,12 +104,12 @@ variable "azure_vm_image_publisher" {
 
 variable "azure_vm_image_offer" {
   description = "Azure VM Image Offer"
-  default     = "0001-com-ubuntu-server-jammy"
+  default     = "0001-com-ubuntu-server-focal"
 }
 
 variable "azure_vm_image_sku" {
   description = "Azure VM Image SKU"
-  default     = "22_04-lts-gen2"
+  default     = "20_04-lts"
 }
 
 variable "azure_vm_image_version" {

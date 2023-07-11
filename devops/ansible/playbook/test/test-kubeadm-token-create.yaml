@@ -1,6 +1,6 @@
 ---
 - name: Testing kubeadm Token creation
-  hosts: master:worker
+  hosts: all
   vars_files:
     - ../../vars/main.yml
   tasks:
@@ -18,10 +18,32 @@
         index_var: index
       changed_when: false
 
-    - name: Debug Kubeadm Token output
+    - name: Create token-list directory
       when: inventory_hostname in groups["master"]
-      ansible.builtin.debug:
-        var: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
+      ansible.builtin.file:
+        path: /home/{{ remote_username }}/.kube/join_token.yml
+        mode: "0755"
+        state: touch
+
+    - name: Copy stdout to join_token.yml
+      when: inventory_hostname in groups["master"]
+      ansible.builtin.copy:
+        remote_src: true
+        content: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
+        dest: /home/{{ remote_username }}/join_token.yml
+        mode: "0755"
       loop: "{{ worker_node_private_ips }}"
       loop_control:
         index_var: index
+
+    # - name: Debug Kubeadm Token output
+    #   when: inventory_hostname in groups["master"]
+    #   # ansible.builtin.debug:
+    #   #   var: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
+    #   ansible.builtin.fetch:
+    #     src: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
+    #     dest: "{{ local_dir }}/devops/ansible/playbook/test/token.yml"
+    #     flat: true
+    #   loop: "{{ worker_node_private_ips }}"
+    #   loop_control:
+    #     index_var: index

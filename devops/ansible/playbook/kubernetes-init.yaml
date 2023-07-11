@@ -5,34 +5,6 @@
     - ../vars/main.yml
   become: true
   tasks:
-    # - name: Adding GPG Key for Docker
-    #   ansible.builtin.apt_key:
-    #     url: https://download.docker.com/linux/ubuntu/gpg
-    #     state: present
-
-    # - name: Adding Rpository for Docker
-    #   ansible.builtin.apt_repository:
-    #     repo: deb https://download.docker.com/linux/ubuntu jammy stable
-    #     state: present
-
-    # - name: Installing Docker Dependencies
-    #   ansible.builtin.apt:
-    #     name: "{{ item }}"
-    #     state: present
-    #     update_cache: true
-    #   loop:
-    #     - docker-ce
-    #     - docker-ce-cli
-    #     - docker-buildx-plugin
-    #     - docker-compose-plugin
-    #     - containerd.io
-    #     - runc
-
-    # - name: Start & Enable Docker service
-    #   ansible.builtin.service:
-    #     name: docker
-    #     state: started
-    #     enabled: true
     - name: Installing Dependencies
       ansible.builtin.apt:
         update_cache: true
@@ -45,33 +17,27 @@
         - gnupg
         - runc
 
-    - name: Downloading Containerd binary - master
-      when: inventory_hostname in groups["master"]
-      ansible.builtin.get_url:
-        url: https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
-        dest: /home/{{ remote_username }}/
-        mode: "0664"
+    - name: Remove swapfile from /etc/fstab
+      ansible.posix.mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
 
-    - name: Downloading Containerd binary - worker
-      when: inventory_hostname in groups["worker"]
-      ansible.builtin.get_url:
-        url: https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
-        dest: /home/{{ remote_username }}/
-        mode: "0664"
+    - name: Disable swap
+      ansible.builtin.command: swapoff -a
+      changed_when: ansible_swaptotal_mb >= 0
 
-    - name: Downloading CNI Plugin binary - master
-      when: inventory_hostname in groups["master"]
+    - name: Downloading Containerd and CNI Plugin binary
       ansible.builtin.get_url:
-        url: https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
+        url: "{{ item }}"
         dest: /home/{{ remote_username }}/
         mode: "0664"
-
-    - name: Downloading CNI Plugin binary - worker
-      when: inventory_hostname in groups["worker"]
-      ansible.builtin.get_url:
-        url: https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
-        dest: /home/{{ remote_username }}/
-        mode: "0664"
+      with_items:
+        - https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
+        - https://github.com/containernetworking/plugins/releases/download/v1.3.0/cni-plugins-linux-amd64-v1.3.0.tgz
 
     - name: Unpacking Containerd binary
       ansible.builtin.unarchive:
@@ -103,39 +69,6 @@
         dest: /opt/cni/bin
         remote_src: true
 
-    - name: Remove swapfile from /etc/fstab
-      ansible.posix.mount:
-        name: "{{ item }}"
-        fstype: swap
-        state: absent
-      with_items:
-        - swap
-        - none
-
-    - name: Disable swap
-      ansible.builtin.command: swapoff -a
-      changed_when: ansible_swaptotal_mb >= 0
-
-    - name: Flush IPtables
-      ansible.builtin.iptables:
-        flush: true
-
-    - name: Enable IP-Forward
-      ansible.posix.sysctl:
-        name: net.ipv4.ip_forward
-        value: "1"
-        sysctl_set: true
-        state: present
-        reload: true
-
-    - name: Adding overlay module
-      community.general.modprobe:
-        name: overlay
-
-    - name: Adding br_netfilter module
-      community.general.modprobe:
-        name: br_netfilter
-
     - name: Adding GPG Key for Kubernetes
       ansible.builtin.apt_key:
         url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
@@ -146,7 +79,7 @@
         repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
         state: present
 
-    - name: Install Kubernetes
+    - name: Install Kubernetes Dependencies
       ansible.builtin.apt:
         force_apt_get: true
         update_cache: true
@@ -165,25 +98,23 @@
 
     - name: Initialize the Kubernetes cluster using kubeadm command
       when: inventory_hostname in groups["master"]
-      ansible.builtin.command: sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=10.230.0.10
+      ansible.builtin.command: "sudo kubeadm init \
+        --pod-network-cidr=10.244.0.0/16 \
+        --apiserver-advertise-address=10.230.0.10 \
+        --control-plane-endpoint {{ master_node_public_ip }}:6443"
       register: kubernetes_init
       changed_when: false
-      failed_when:
-        - "'cni plugin not initialized' in kubernetes_init.stderr"
       timeout: 10000
 
-    - name: Error Message - Kubeadm init
+    - name: Debug - Kubeadm init
       when: inventory_hostname in groups["master"]
       ansible.builtin.debug:
-        var: kubernetes_init.stderr
-
-    - name: Command to join nodes through Kubeadm join
-      when: inventory_hostname in groups["master"]
-      ansible.builtin.debug:
-        var: kubernetes_init.stdout
+        var: item
+      loop:
+        - "{{ kubernetes_init.stdout }}"
+        - "{{ kubernetes_init.stderr }}"
 
     - name: Create .kube
-      when: inventory_hostname in groups["master"]
       ansible.builtin.file:
         path: /home/{{ remote_username }}/.kube
         state: directory
@@ -203,6 +134,19 @@
         src: "/home/{{ remote_username }}/.kube/config"
         dest: "{{ local_dir }}/.kube/kubeconfig.yaml"
         flat: true
+
+    - name: Copying kubeconfig to worker nodes
+      when: inventory_hostname in groups["worker"]
+      ansible.builtin.copy:
+        src: "{{ local_dir }}/.kube/kubeconfig.yaml"
+        dest: "/home/{{ remote_username }}/.kube/join.conf"
+        mode: "0755"
+
+    - name: Running kubeadm join in worker nodes
+      when: inventory_hostname in groups["worker"]
+      ansible.builtin.command: sudo kubeadm join --discovery-file /home/{{ remote_username }}/.kube/join.conf
+      changed_when: false
+
     # - name: Set up Kubernetes for shashank user
     #   command: "{{ item }}"
     #   when: inventory_hostname in groups['k8s-master']

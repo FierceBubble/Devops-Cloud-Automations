@@ -69,12 +69,21 @@ resource "time_sleep" "local-exec-provisioner" {
       make all-update-apt
       make ping
       make kubernetes-init
-      make local-add-kubeconfig
     EOT
   }
   create_duration = "5s"
+  kubeconfig_dir  = local.k8s_config_file
 }
 
+# resource "time_sleep" "kubernetes-initialized" {
+#   depends_on = [time_sleep.local-exec-provisioner]
+#   provisioner "local-exec" {
+#     when        = create
+#     working_dir = local.root_dir
+#     command     = "make kubernetes-init"
+#   }
+#   create_duration = "5s"
+# }
 # resource "null_resource" "copy-private_key-master" {
 #   depends_on = [time_sleep.local-exec-provisioner]
 #   count      = var.worker_vm_count

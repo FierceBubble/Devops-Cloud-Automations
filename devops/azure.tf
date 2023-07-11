@@ -3,6 +3,13 @@ resource "azurerm_resource_group" "rg" {
   location = var.azure_rg_location
 }
 
+resource "azurerm_availability_set" "name" {
+  name                = var.azure_availability_set_name
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  managed             = false
+}
+
 module "network" {
   source            = "./modules/azure/network"
   rg_name           = azurerm_resource_group.rg.name
@@ -96,4 +103,5 @@ resource "local_file" "ansible_vars_tf" {
 module "k8s" {
   source          = "./modules/azure/kubernetes"
   kubeconfig_path = local.k8s_config_file
+  # root_dir        = local.root_dir
 }
