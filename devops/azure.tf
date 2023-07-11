@@ -101,7 +101,7 @@ resource "local_file" "ansible_vars_tf" {
 
 # - - - - - Kubernetes Provisioning - - - - -
 module "k8s" {
-  source          = "./modules/azure/kubernetes"
-  kubeconfig_path = local.k8s_config_file
-  # root_dir        = local.root_dir
+  depends_on = [time_sleep.local-exec-provisioner]
+  source     = "./modules/azure/kubernetes"
+  root_dir   = local.root_dir
 }

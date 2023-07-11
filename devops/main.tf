@@ -22,6 +22,19 @@ terraform {
       source  = "hashicorp/tls"
       version = ">= 3.0.0"
     }
+
+    helm = {
+      source  = "hashicorp/helm"
+      version = ">= 2.4.1"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = ">= 2.8.0"
+    }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.7.0"
+    }
   }
 
   # Put .tfstate into Linode s3 cloud storage instead of a local
@@ -46,3 +59,17 @@ provider "linode" {
 }
 
 provider "tls" {}
+
+provider "helm" {
+  kubernetes {
+    config_path = local.k8s_config_file
+  }
+}
+
+provider "kubernetes" {
+  config_path = local.k8s_config_file
+}
+
+provider "kubectl" {
+  config_path = local.k8s_config_file
+}

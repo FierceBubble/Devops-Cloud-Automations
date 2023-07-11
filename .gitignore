@@ -49,6 +49,7 @@ password
 vault.yml
 **/vars
 **/ssh
+**/command/*
 
 # Ignore code-workspace
 *.code-workspace

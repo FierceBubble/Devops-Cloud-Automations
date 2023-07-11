@@ -4,7 +4,7 @@
 # }
 
 resource "ansible_host" "local" {
-  name   = "127.0.0.1"
+  name   = "localhost"
   groups = ["local"]
   variables = {
     ansible_connection  = "local"
@@ -43,17 +43,11 @@ resource "ansible_host" "worker" {
   }
 }
 
-# resource "ansible_playbook" "local-update-ssh-config" {
-#   playbook   = "./ansible/playbook/local-update-ssh-config.yaml"
-#   name       = "local"
-#   replayable = true
-
-#   extra_vars = {
-#     local_username              = var.local_admin_username
-#     master_node_public_ip       = azurerm_linux_virtual_machine.vm.public_ip_address
-#     master_node_ssh_private_key = local.private_key
-#   }
-# }
+resource "local_file" "kubeconfig" {
+  content         = "Kubeconfig not initialized!"
+  filename        = local.k8s_config_file
+  file_permission = "0600"
+}
 
 resource "time_sleep" "local-exec-provisioner" {
   depends_on = [ansible_host.worker]
@@ -71,8 +65,7 @@ resource "time_sleep" "local-exec-provisioner" {
       make kubernetes-init
     EOT
   }
-  create_duration = "5s"
-  kubeconfig_dir  = local.k8s_config_file
+  create_duration = "30s"
 }
 
 # resource "time_sleep" "kubernetes-initialized" {

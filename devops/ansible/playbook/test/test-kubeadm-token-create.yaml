@@ -4,46 +4,40 @@
   vars_files:
     - ../../vars/main.yml
   tasks:
-    - name: Create Kubeadm token for worker node
-      when: inventory_hostname in groups["master"]
-      ansible.builtin.command: 'kubeadm token create --description "[{{ item }}] worker-{{ index }}"  --print-join-command'
-      register: kubeadm_token
-      # with_items: "{{ worker_node_private_ips }}"
-      loop:
-        - "10.230.0.20"
-        - "10.230.0.21"
-        - "10.230.0.22"
-        - "10.230.0.23"
-      loop_control:
-        index_var: index
+    - name: Retrieve Kubernetes join command that is used to join worker node(s)
+      become: false
+      when: inventory_hostname in groups['master']
+      ansible.builtin.command: kubeadm token create --print-join-command --description "[{{ item }}] worker-{{ index }}"
+      register: join_command
       changed_when: false
-
-    - name: Create token-list directory
-      when: inventory_hostname in groups["master"]
-      ansible.builtin.file:
-        path: /home/{{ remote_username }}/.kube/join_token.yml
-        mode: "0755"
-        state: touch
-
-    - name: Copy stdout to join_token.yml
-      when: inventory_hostname in groups["master"]
-      ansible.builtin.copy:
-        remote_src: true
-        content: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
-        dest: /home/{{ remote_username }}/join_token.yml
-        mode: "0755"
       loop: "{{ worker_node_private_ips }}"
       loop_control:
         index_var: index
 
-    # - name: Debug Kubeadm Token output
-    #   when: inventory_hostname in groups["master"]
-    #   # ansible.builtin.debug:
-    #   #   var: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
-    #   ansible.builtin.fetch:
-    #     src: "kubeadm_token | json_query('results[*].stdout | [{{ index }}]')"
-    #     dest: "{{ local_dir }}/devops/ansible/playbook/test/token.yml"
-    #     flat: true
+    # - name: Debug
+    #   when: inventory_hostname in groups['master']
+    #   ansible.builtin.debug:
+    #     msg: "{{ join_command }}"
     #   loop: "{{ worker_node_private_ips }}"
     #   loop_control:
     #     index_var: index
+
+    - name: Attach kubeadm join command to a file on Ansible control node
+      when: inventory_hostname in groups['master']
+      delegate_to: "127.0.0.1"
+      ansible.builtin.copy:
+        mode: "0777"
+        dest: "{{ local_dir }}/devops/ansible/playbook/command/{{ item }}"
+        content: "{{ join_command.results[index].stdout }}"
+      loop: "{{ worker_node_private_ips }}"
+      loop_control:
+        index_var: index
+
+    - name: Detele join command files
+      ansible.builtin.file:
+        state: absent
+        path: "{{ local_dir }}/devops/ansible/playbook/command/{{ item }}"
+        mode: "0777"
+      loop: "{{ worker_node_private_ips }}"
+      loop_control:
+        index_var: index

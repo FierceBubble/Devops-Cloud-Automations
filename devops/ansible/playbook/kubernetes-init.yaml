@@ -103,6 +103,8 @@
         --apiserver-advertise-address=10.230.0.10 \
         --control-plane-endpoint {{ master_node_public_ip }}:6443"
       register: kubernetes_init
+      failed_when:
+        - "'cni plugin not initialized' in kubernetes_init.stderr"
       changed_when: false
       timeout: 10000
 
@@ -113,6 +115,10 @@
       loop:
         - "{{ kubernetes_init.stdout }}"
         - "{{ kubernetes_init.stderr }}"
+
+    - name: Pause for 10 seconds to build Kubernetes
+      ansible.builtin.pause:
+        seconds: 10
 
     - name: Create .kube
       ansible.builtin.file:
@@ -135,45 +141,70 @@
         dest: "{{ local_dir }}/.kube/kubeconfig.yaml"
         flat: true
 
-    - name: Copying kubeconfig to worker nodes
-      when: inventory_hostname in groups["worker"]
-      ansible.builtin.copy:
-        src: "{{ local_dir }}/.kube/kubeconfig.yaml"
-        dest: "/home/{{ remote_username }}/.kube/join.conf"
-        mode: "0755"
+    # This is to join worker nodes using kubeconfig file copied from the master node
+    # - name: Copying kubeconfig to worker nodes
+    #   when: inventory_hostname in groups["worker"]
+    #   ansible.builtin.copy:
+    #     src: "{{ local_dir }}/.kube/kubeconfig.yaml"
+    #     dest: "/home/{{ remote_username }}/.kube/join.conf"
+    #     mode: "0755"
 
-    - name: Running kubeadm join in worker nodes
-      when: inventory_hostname in groups["worker"]
-      ansible.builtin.command: sudo kubeadm join --discovery-file /home/{{ remote_username }}/.kube/join.conf
+    # - name: Running kubeadm join in worker nodes
+    #   when: inventory_hostname in groups["worker"]
+    #   ansible.builtin.command: sudo kubeadm join --discovery-file /home/{{ remote_username }}/.kube/join.conf
+    #   changed_when: false
+    # - - - - - - - - - - - - - - - - - #
+
+    - name: Retrieve Kubernetes join command that is used to join worker node(s)
+      become: false
+      when: inventory_hostname in groups['master']
+      ansible.builtin.command: kubeadm token create --print-join-command --description "[{{ item }}] worker-{{ index }}"
+      register: join_command
       changed_when: false
+      loop: "{{ worker_node_private_ips }}"
+      loop_control:
+        index_var: index
 
-    # - name: Set up Kubernetes for shashank user
-    #   command: "{{ item }}"
-    #   when: inventory_hostname in groups['k8s-master']
-    #   with_items:
-    #     - mkdir -p /home/shashank/.kube
-    #     - cp -i /etc/kubernetes/admin.conf /home/shashank/.kube/config
-    #     - chown shashank:shashank /home/shashank/.kube/config
+    - name: Attach kubeadm join command to a file on Ansible control node
+      when: inventory_hostname in groups['master']
+      delegate_to: localhost
+      ansible.builtin.copy:
+        mode: "0777"
+        dest: "{{ local_dir }}/devops/ansible/playbook/command/{{ item }}"
+        content: "{{ join_command.results[index].stdout }}"
+      loop: "{{ worker_node_private_ips }}"
+      loop_control:
+        index_var: index
 
-    # - name: Install Flannel pod network
-    #   become: false
-    #   when: inventory_hostname in groups['k8s-master']
-    #   command: kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+    - name: Copy the join-command file created to worker node
+      when: inventory_hostname in groups['worker']
+      ansible.builtin.copy:
+        src: "{{ local_dir }}/devops/ansible/playbook/command/{{ inventory_hostname }}"
+        dest: /tmp/kubeadm-join.sh
+        mode: "0777"
+        remote_src: false
 
-    # - name: Retrieve Kubernetes join command that is used to join worker node(s)
-    #   become: false
-    #   when: inventory_hostname in groups['k8s-master']
-    #   command: kubeadm token create --print-join-command
-    #   register: join_command
+    - name: Join the worker node to cluster
+      when: inventory_hostname in groups['worker']
+      ansible.builtin.command: sh /tmp/kubeadm-join.sh
+      register: join_worker
+      changed_when: false
+      failed_when:
+        - "'cni plugin not initialized' in join_worker.stderr"
 
-    # - name: Attach kubeadm join command to a file on Ansible control node
-    #   when: inventory_hostname in groups['k8s-master']
-    #   local_action: "copy content='{{ join_command.stdout_lines[0] }}' dest=join-command"
+    - name: Delete join command files
+      when: inventory_hostname in groups["master"]
+      delegate_to: localhost
+      ansible.builtin.file:
+        state: absent
+        path: "{{ local_dir }}/devops/ansible/playbook/command/{{ item }}"
+        mode: "0777"
+      loop: "{{ worker_node_private_ips }}"
+      loop_control:
+        index_var: index
 
-    # - name: Copy the join-command file created above to worker node
-    #   when: inventory_hostname in groups['k8s-worker']
-    #   copy: src=join-command dest=/tmp/kubeadm-join.sh mode=0777
-
-    # - name: Join the worker node to cluster
-    #   when: inventory_hostname in groups['k8s-worker']
-    #   command: sh /tmp/kubeadm-join.sh
+    - name: Install Flannel pod network
+      when: inventory_hostname in groups["master"]
+      become: false
+      ansible.builtin.command: kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+      changed_when: false
