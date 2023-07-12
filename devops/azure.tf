@@ -3,11 +3,13 @@ resource "azurerm_resource_group" "rg" {
   location = var.azure_rg_location
 }
 
-resource "azurerm_availability_set" "name" {
-  name                = var.azure_availability_set_name
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  managed             = false
+resource "azurerm_availability_set" "avlbset" {
+  name                         = var.azure_availability_set_name
+  resource_group_name          = azurerm_resource_group.rg.name
+  location                     = azurerm_resource_group.rg.location
+  platform_update_domain_count = 1
+  platform_fault_domain_count  = 1
+  managed                      = true
 }
 
 module "network" {
@@ -24,6 +26,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   size                = var.azure_vm_size
   computer_name       = var.azure_vm_host_name
   admin_username      = var.azure_admin_username
+  availability_set_id = azurerm_availability_set.avlbset.id
 
   network_interface_ids = [
     module.network.nic_id,
@@ -58,8 +61,7 @@ resource "azurerm_linux_virtual_machine" "worker" {
   size                = var.azure_vm_size
   computer_name       = "worker-${count.index}"
   admin_username      = var.azure_admin_username
-  # disable_password_authentication = var.azure_vm_disable_password
-  # admin_password                  = var.azure_admin_password
+  availability_set_id = azurerm_availability_set.avlbset.id
 
   network_interface_ids = [
     module.network.worker-nic-ids[count.index],
@@ -100,8 +102,8 @@ resource "local_file" "ansible_vars_tf" {
 }
 
 # - - - - - Kubernetes Provisioning - - - - -
-module "k8s" {
-  depends_on = [time_sleep.local-exec-provisioner]
-  source     = "./modules/azure/kubernetes"
-  root_dir   = local.root_dir
-}
+# module "k8s" {
+#   source          = "./modules/azure/kubernetes"
+#   root_dir        = local.root_dir
+#   kubeconfig_path = local_file.kubeconfig.filename
+# }

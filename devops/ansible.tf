@@ -44,6 +44,7 @@ resource "ansible_host" "worker" {
 }
 
 resource "local_file" "kubeconfig" {
+  depends_on      = [ansible_host.worker]
   content         = "Kubeconfig not initialized!"
   filename        = local.k8s_config_file
   file_permission = "0600"
@@ -54,8 +55,7 @@ resource "time_sleep" "local-exec-provisioner" {
   provisioner "local-exec" {
     when        = create
     working_dir = local.root_dir
-    # command     = "make inventory && make ping-master && make local-update-ssh-config && make remote-update-apt && make master-update-ssh-config && make ping && make worker-setup"
-    command = <<EOT
+    command     = <<EOT
       make inventory
       make local-update-ssh-config
       make ping-master
@@ -67,33 +67,3 @@ resource "time_sleep" "local-exec-provisioner" {
   }
   create_duration = "30s"
 }
-
-# resource "time_sleep" "kubernetes-initialized" {
-#   depends_on = [time_sleep.local-exec-provisioner]
-#   provisioner "local-exec" {
-#     when        = create
-#     working_dir = local.root_dir
-#     command     = "make kubernetes-init"
-#   }
-#   create_duration = "5s"
-# }
-# resource "null_resource" "copy-private_key-master" {
-#   depends_on = [time_sleep.local-exec-provisioner]
-#   count      = var.worker_vm_count
-#   connection {
-#     host        = azurerm_linux_virtual_machine.vm.public_ip_address
-#     type        = "ssh"
-#     user        = var.azure_admin_username
-#     private_key = tls_private_key.ssh.private_key_openssh
-#     agent       = "false"
-#   }
-#   provisioner "file" {
-#     source      = "${local.root_dir}/devops/ssh/ssh-key"
-#     destination = ".ssh/"
-#   }
-
-#   provisioner "file" {
-#     content     = "Host ${module.network.worker-private-ip[count.index]}\n  HostName ${module.network.worker-private-ip[count.index]}  IdentityFile ~/.ssh/ssh-key"
-#     destination = ".ssh/config"
-#   }
-# }

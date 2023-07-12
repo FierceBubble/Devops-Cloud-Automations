@@ -28,6 +28,7 @@ resource "azurerm_public_ip" "public_ip" {
   resource_group_name = var.rg_name
   location            = var.rg_location
   allocation_method   = "Static"
+  sku                 = "Standard"
 }
 
 resource "azurerm_network_interface" "nic" {
@@ -60,4 +61,26 @@ resource "azurerm_network_interface" "worker_nic" {
     private_ip_address_version    = var.azure_nic_privateip_version
     private_ip_address_allocation = var.azure_nic_privateip_allocation
   }
+}
+
+
+module "loadbalancer" {
+  source          = "./loadbalancer"
+  rg_location     = var.rg_location
+  rg_name         = var.rg_name
+  vnet_id         = azurerm_virtual_network.vnet.id
+  azure_subnet_id = azurerm_subnet.subnet.id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "NIC-LB-master" {
+  network_interface_id    = azurerm_network_interface.nic.id
+  ip_configuration_name   = azurerm_network_interface.nic.ip_configuration[0].name
+  backend_address_pool_id = module.loadbalancer.backend_address_pool_id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "NIC-LB-worker" {
+  count                   = var.count_worker_node
+  network_interface_id    = azurerm_network_interface.worker_nic[count.index].id
+  ip_configuration_name   = azurerm_network_interface.worker_nic[count.index].ip_configuration[0].name
+  backend_address_pool_id = module.loadbalancer.backend_address_pool_id
 }
