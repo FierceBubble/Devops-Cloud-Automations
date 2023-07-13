@@ -63,7 +63,6 @@ resource "azurerm_network_interface" "worker_nic" {
   }
 }
 
-
 module "loadbalancer" {
   source          = "./loadbalancer"
   rg_location     = var.rg_location
@@ -72,11 +71,11 @@ module "loadbalancer" {
   azure_subnet_id = azurerm_subnet.subnet.id
 }
 
-resource "azurerm_network_interface_backend_address_pool_association" "NIC-LB-master" {
-  network_interface_id    = azurerm_network_interface.nic.id
-  ip_configuration_name   = azurerm_network_interface.nic.ip_configuration[0].name
-  backend_address_pool_id = module.loadbalancer.backend_address_pool_id
-}
+# resource "azurerm_network_interface_backend_address_pool_association" "NIC-LB-master" {
+#   network_interface_id    = azurerm_network_interface.nic.id
+#   ip_configuration_name   = azurerm_network_interface.nic.ip_configuration[0].name
+#   backend_address_pool_id = module.loadbalancer.backend_address_pool_id
+# }
 
 resource "azurerm_network_interface_backend_address_pool_association" "NIC-LB-worker" {
   count                   = var.count_worker_node

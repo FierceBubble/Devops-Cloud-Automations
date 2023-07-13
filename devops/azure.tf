@@ -95,6 +95,7 @@ resource "local_file" "ansible_vars_tf" {
   local_username: ${var.local_admin_username}
   remote_username: ${var.azure_admin_username}
   master_node_public_ip: ${azurerm_linux_virtual_machine.vm.public_ip_address}
+  loadbalancer_public_ip: ${module.network.azure_lb_public_ip}
   master_node_ssh_private_key: ${local.root_dir}/devops/ssh/ssh-key
   worker_node_private_ips: ${jsonencode(module.network.worker-private-ip)}
   DOC
@@ -102,8 +103,9 @@ resource "local_file" "ansible_vars_tf" {
 }
 
 # - - - - - Kubernetes Provisioning - - - - -
-# module "k8s" {
-#   source          = "./modules/azure/kubernetes"
-#   root_dir        = local.root_dir
-#   kubeconfig_path = local_file.kubeconfig.filename
-# }
+module "k8s" {
+  source   = "./modules/azure/kubernetes"
+  root_dir = local.root_dir
+
+  kubeconfig_path = local_file.kubeconfig.filename
+}

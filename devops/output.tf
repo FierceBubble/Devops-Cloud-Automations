@@ -1,3 +1,7 @@
+output "LoadBalancer-public_ip" {
+  value = module.network.azure_lb_public_ip
+}
+
 output "MasterNode-public_ip" {
   value = azurerm_linux_virtual_machine.vm.public_ip_address
 }
