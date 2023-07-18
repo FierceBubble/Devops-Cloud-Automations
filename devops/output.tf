@@ -3,11 +3,11 @@ output "LoadBalancer-public_ip" {
 }
 
 output "MasterNode-public_ip" {
-  value = azurerm_linux_virtual_machine.vm.public_ip_address
+  value = azurerm_linux_virtual_machine.master.public_ip_address
 }
 
 output "MasterNode-private_ip" {
-  value = azurerm_linux_virtual_machine.vm.private_ip_address
+  value = azurerm_linux_virtual_machine.master.private_ip_address
 }
 
 output "WorkerNode-private-ips" {

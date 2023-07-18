@@ -5,3 +5,7 @@ variable "root_dir" {
 variable "kubeconfig_path" {
   description = "Kubeconfig file path"
 }
+
+variable "loadbalancer_public_ip" {
+  description = "LoadBalancer public IP"
+}

@@ -13,3 +13,7 @@ variable "container_port" {
 variable "container_type" {
   description = "Container deployment type"
 }
+
+variable "loadbalancer_public_ip" {
+  description = "LoadBalancer public IP"
+}
